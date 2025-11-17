@@ -1,25 +1,24 @@
-import { Folder, Plus, LogOut } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Plus, LogOut, ChevronLeft, ChevronRight, ListTodo } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { Project } from "@/types/database";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import type { Project } from "@/types/database";
 
 interface AppSidebarProps {
   onCreateProject: () => void;
@@ -28,9 +27,8 @@ interface AppSidebarProps {
 export function AppSidebar({ onCreateProject }: AppSidebarProps) {
   const sidebar = useSidebar();
   const collapsed = sidebar.state === "collapsed";
-  const location = useLocation();
 
-  const { data: projects = [], refetch } = useQuery({
+  const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,78 +62,123 @@ export function AppSidebar({ onCreateProject }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-72"}>
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
-        {!collapsed && (
-          <div>
-            <h1 className="text-xl font-bold text-sidebar-primary">SkillSprint</h1>
-            <p className="text-xs text-sidebar-foreground/70 mt-1">
-              Track your work. Level up your skills.
-            </p>
-          </div>
-        )}
-      </SidebarHeader>
+    <>
+      {/* Expand button when collapsed - fixed at left edge */}
+      {collapsed && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            const trigger = document.querySelector('[data-sidebar="trigger"]') as HTMLElement;
+            trigger?.click();
+          }}
+          className="fixed left-2 top-4 z-50 h-8 w-8 bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      )}
 
-      <SidebarContent>
-        <SidebarGroup>
-          <div className="px-3 py-2">
-            <Button
-              onClick={onCreateProject}
-              className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
+      <Sidebar className={collapsed ? "w-14" : "w-60"}>
+        <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
+          <div className="flex items-center justify-between">
+            {!collapsed && (
+              <div>
+                <h2 className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  SkillSprint
+                </h2>
+                <p className="text-xs text-muted-foreground">Track your progress</p>
+              </div>
+            )}
+            {/* Collapse button inside sidebar when expanded */}
+            <SidebarTrigger 
+              className="h-8 w-8" 
+              data-sidebar="trigger"
             >
-              <Plus className="h-4 w-4" />
-              <span className="ml-2">New Project</span>
-            </Button>
+              <ChevronLeft className="h-4 w-4" />
+            </SidebarTrigger>
           </div>
-        </SidebarGroup>
+        </SidebarHeader>
 
-        <SidebarGroup>
-          {!collapsed && (
-            <SidebarGroupLabel className="text-sidebar-foreground/70">
-              Projects
-            </SidebarGroupLabel>
-          )}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {projects.map((project) => (
-                <SidebarMenuItem key={project.id}>
+        <SidebarContent>
+          <SidebarGroup>
+            {!collapsed && (
+              <SidebarGroupLabel>Actions</SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <Button
+                onClick={onCreateProject}
+                className="w-full justify-start gap-2"
+                variant="outline"
+              >
+                <Plus className="h-4 w-4" />
+                {!collapsed && "New Project"}
+              </Button>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {/* All Tasks link */}
+          <SidebarGroup>
+            {!collapsed && (
+              <SidebarGroupLabel>Overview</SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink
-                      to={`/project/${project.id}`}
-                      className="hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                      to="/all-tasks"
+                      className="hover:bg-sidebar-accent"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
-                      <div className="flex items-center gap-2 w-full min-w-0">
-                        <div
-                          className={`h-2 w-2 rounded-full flex-shrink-0 ${getStatusColor(
-                            project.status
-                          )}`}
-                        />
-                        {!collapsed && (
-                          <div className="flex-1 min-w-0">
-                            <p className="truncate text-sm">{project.name}</p>
-                          </div>
-                        )}
-                      </div>
+                      <ListTodo className="h-4 w-4" />
+                      {!collapsed && <span>All Tasks</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <Button
-          onClick={handleSignOut}
-          variant="ghost"
-          className="w-full text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="ml-2">Sign Out</span>
-        </Button>
-      </SidebarFooter>
-    </Sidebar>
+          <SidebarGroup>
+            {!collapsed && (
+              <SidebarGroupLabel>Projects</SidebarGroupLabel>
+            )}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {projects.map((project) => (
+                  <SidebarMenuItem key={project.id}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={`/project/${project.id}`}
+                        className="hover:bg-sidebar-accent"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <div
+                          className={`h-2 w-2 rounded-full ${getStatusColor(
+                            project.status
+                          )}`}
+                        />
+                        {!collapsed && <span>{project.name}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter className="border-t border-sidebar-border p-4">
+          <Button
+            variant="ghost"
+            onClick={handleSignOut}
+            className="w-full justify-start gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            {!collapsed && "Sign Out"}
+          </Button>
+        </SidebarFooter>
+      </Sidebar>
+    </>
   );
 }
