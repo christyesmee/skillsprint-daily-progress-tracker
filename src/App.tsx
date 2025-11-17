@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import ProjectDetail from "./pages/ProjectDetail";
+import AllTasks from "./pages/AllTasks";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
             }
           >
             <Route index element={<Home />} />
+            <Route path="all-tasks" element={<AllTasks />} />
+            <Route path="profile" element={<Profile />} />
             <Route path="project/:projectId" element={<ProjectDetail />} />
           </Route>
           <Route path="*" element={<NotFound />} />

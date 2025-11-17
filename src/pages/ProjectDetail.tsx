@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, List, Calendar } from "lucide-react";
+import { Pencil, Trash2, List, Calendar, ArrowLeft } from "lucide-react";
 import { ProjectDialog } from "@/components/project/ProjectDialog";
 import { TaskListView } from "@/components/task/TaskListView";
 import { TaskTimelineView } from "@/components/task/TaskTimelineView";
+import { CategoryManagement } from "@/components/category/CategoryManagement";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import type { Project, Task } from "@/types/database";
@@ -26,6 +27,7 @@ type ViewMode = "list" | "timeline";
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -165,11 +167,23 @@ export default function ProjectDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/")}
+        className="gap-2"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Projects
+      </Button>
+
       {/* Project Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">{project.name}</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              {project.name}
+            </h1>
             {getStatusBadge(project.status)}
           </div>
           {project.description && (
@@ -186,6 +200,7 @@ export default function ProjectDetail() {
         </div>
 
         <div className="flex items-center gap-2">
+          <CategoryManagement />
           <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit Project

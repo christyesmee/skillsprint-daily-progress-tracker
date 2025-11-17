@@ -1,10 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Folder, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Folder, CheckCircle2, Clock, Plus, Calendar } from "lucide-react";
+import { ProjectDialog } from "@/components/project/ProjectDialog";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import type { Project } from "@/types/database";
 
 export default function Home() {
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
@@ -25,17 +34,64 @@ export default function Home() {
     completed: projects.filter((p) => p.status === "completed").length,
   };
 
+  const handleCreateProject = async (data: Partial<Project>) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const insertData: any = {
+      ...data,
+      user_id: user.id,
+    };
+
+    const { error } = await supabase.from("projects").insert(insertData);
+
+    if (error) {
+      toast.error("Failed to create project");
+      throw error;
+    }
+
+    toast.success("Project created successfully!");
+    queryClient.invalidateQueries({ queryKey: ["projects"] });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-status-in-progress";
+      case "on_hold":
+        return "bg-status-todo";
+      case "completed":
+        return "bg-status-done";
+      default:
+        return "bg-muted";
+    }
+  };
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold mb-2">Welcome to SkillSprint</h1>
-        <p className="text-lg text-muted-foreground">
-          Track your work progress and level up your skills
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            Project Dashboard
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Track your work progress and level up your skills
+          </p>
+        </div>
+        <Button
+          onClick={() => setCreateProjectOpen(true)}
+          size="lg"
+          className="shadow-glow"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          New Project
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="hover:shadow-glow transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Projects
@@ -43,11 +99,13 @@ export default function Home() {
             <Folder className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.total}</div>
+            <div className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              {stats.total}
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-glow transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Active Projects
@@ -55,11 +113,13 @@ export default function Home() {
             <CheckCircle2 className="h-4 w-4 text-status-in-progress" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.active}</div>
+            <div className="text-3xl font-bold text-status-in-progress">
+              {stats.active}
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-glow transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               On Hold
@@ -67,11 +127,13 @@ export default function Home() {
             <Clock className="h-4 w-4 text-status-todo" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.onHold}</div>
+            <div className="text-3xl font-bold text-status-todo">
+              {stats.onHold}
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-glow transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Completed
@@ -79,27 +141,85 @@ export default function Home() {
             <CheckCircle2 className="h-4 w-4 text-status-done" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.completed}</div>
+            <div className="text-3xl font-bold text-status-done">
+              {stats.completed}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      <Card className="shadow-glow">
         <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
+          <CardTitle>Your Projects</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground">
-            Welcome to SkillSprint! Here's how to get started:
-          </p>
-          <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
-            <li>Create your first project using the "+ New Project" button in the sidebar</li>
-            <li>Add tasks to your project to break down your work</li>
-            <li>Use the Timeline view to visualize your project schedule</li>
-            <li>Track your daily progress and build your professional portfolio</li>
-          </ol>
+        <CardContent>
+          {projects.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                No projects yet. Create your first project to get started!
+              </p>
+              <Button onClick={() => setCreateProjectOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Project
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map((project) => (
+                <Card
+                  key={project.id}
+                  className="cursor-pointer hover:shadow-glow transition-all hover:scale-105"
+                  onClick={() => navigate(`/project/${project.id}`)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg">{project.name}</CardTitle>
+                      <div
+                        className={`w-3 h-3 rounded-full ${getStatusColor(
+                          project.status
+                        )}`}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {project.description && (
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                        {project.description}
+                      </p>
+                    )}
+                    {(project.start_date || project.target_end_date) && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        {project.start_date && (
+                          <span>
+                            {new Date(project.start_date).toLocaleDateString()}
+                          </span>
+                        )}
+                        {project.start_date && project.target_end_date && (
+                          <span>-</span>
+                        )}
+                        {project.target_end_date && (
+                          <span>
+                            {new Date(
+                              project.target_end_date
+                            ).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <ProjectDialog
+        open={createProjectOpen}
+        onOpenChange={setCreateProjectOpen}
+        onSave={handleCreateProject}
+      />
     </div>
   );
 }

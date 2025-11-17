@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { TaskDialog } from "./TaskDialog";
+import { CategoryBadge } from "@/components/category/CategoryBadge";
 import type { Task, TaskStatus } from "@/types/database";
 import {
   Select,
@@ -20,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -39,6 +42,18 @@ export function TaskListView({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const filteredTasks = tasks.filter(
     (task) => filterStatus === "all" || task.status === filterStatus
@@ -111,7 +126,8 @@ export function TaskListView({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[40%]">Task</TableHead>
+              <TableHead className="w-[35%]">Task</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Due Date</TableHead>
@@ -121,7 +137,7 @@ export function TaskListView({
           <TableBody>
             {filteredTasks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   No tasks found. Create your first task to get started!
                 </TableCell>
               </TableRow>
@@ -137,6 +153,14 @@ export function TaskListView({
                         </p>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {task.category_id && categories.find((c: any) => c.id === task.category_id) && (
+                      <CategoryBadge
+                        name={categories.find((c: any) => c.id === task.category_id)!.name}
+                        color={categories.find((c: any) => c.id === task.category_id)!.color}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>{getStatusBadge(task.status)}</TableCell>
                   <TableCell>{getPriorityBadge(task.priority)}</TableCell>

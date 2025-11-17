@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import type { Task, TaskStatus, TaskPriority } from "@/types/database";
 
 interface TaskDialogProps {
@@ -31,6 +33,7 @@ export function TaskDialog({ open, onOpenChange, task, projectId, onSave }: Task
   const [description, setDescription] = useState(task?.description || "");
   const [status, setStatus] = useState<TaskStatus>(task?.status || "todo");
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || "medium");
+  const [categoryId, setCategoryId] = useState<string | undefined>(task?.category_id || undefined);
   const [startDate, setStartDate] = useState<Date | undefined>(
     task?.start_date ? new Date(task.start_date) : undefined
   );
@@ -38,6 +41,30 @@ export function TaskDialog({ open, onOpenChange, task, projectId, onSave }: Task
     task?.due_date ? new Date(task.due_date) : undefined
   );
   const [saving, setSaving] = useState(false);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (task) {
+      setTitle(task.title);
+      setDescription(task.description || "");
+      setStatus(task.status);
+      setPriority(task.priority || "medium");
+      setCategoryId(task.category_id || undefined);
+      setStartDate(task.start_date ? new Date(task.start_date) : undefined);
+      setDueDate(task.due_date ? new Date(task.due_date) : undefined);
+    }
+  }, [task]);
 
   const handleSave = async () => {
     if (!title.trim() || !dueDate) return;
@@ -49,6 +76,7 @@ export function TaskDialog({ open, onOpenChange, task, projectId, onSave }: Task
         description: description.trim() || null,
         status,
         priority,
+        category_id: categoryId || null,
         start_date: startDate ? format(startDate, "yyyy-MM-dd") : null,
         due_date: format(dueDate, "yyyy-MM-dd"),
         project_id: projectId,
@@ -118,6 +146,30 @@ export function TaskDialog({ open, onOpenChange, task, projectId, onSave }: Task
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={categoryId || "none"} onValueChange={(v) => setCategoryId(v === "none" ? undefined : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Category</SelectItem>
+                  {categories.map((category: any) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        {category.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
 
             <div className="space-y-2">
               <Label>Start Date</Label>
