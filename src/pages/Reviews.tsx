@@ -15,6 +15,7 @@ import { format, addWeeks, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { CareerChatbot } from "@/components/career/CareerChatbot";
 
 export default function Reviews() {
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
@@ -120,15 +121,13 @@ export default function Reviews() {
   };
 
   const handleDeleteGoal = async (goalId: string) => {
-    try {
-      const { error } = await supabase.from("career_goals").delete().eq("id", goalId);
-      if (error) throw error;
-      toast.success("Goal deleted");
-      queryClient.invalidateQueries({ queryKey: ["career-goals"] });
-    } catch (error) {
-      console.error("Error deleting goal:", error);
+    const { error } = await supabase.from("career_goals").delete().eq("id", goalId);
+    if (error) {
       toast.error("Failed to delete goal");
+      return;
     }
+    toast.success("Goal deleted!");
+    queryClient.invalidateQueries({ queryKey: ["career-goals"] });
   };
 
   const handleUpdateCadence = async (oneOnOne: string, performance: string) => {
@@ -138,63 +137,76 @@ export default function Reviews() {
     if (!user) return;
 
     try {
-      const { error } = await supabase.from("review_cadence").upsert({
-        user_id: user.id,
-        one_on_one: oneOnOne,
-        performance: performance,
-      });
+      const { error: upsertError } = await supabase
+        .from("review_cadence")
+        .upsert({
+          user_id: user.id,
+          one_on_one: oneOnOne,
+          performance: performance,
+        });
 
-      if (error) throw error;
+      if (upsertError) throw upsertError;
+
+      await supabase.from("review_sessions").delete().eq("user_id", user.id);
+
+      const sessions = [];
+      const startDate = new Date();
+
+      for (let i = 0; i < 12; i++) {
+        let oneOnOneDate;
+        if (oneOnOne === "weekly") {
+          oneOnOneDate = addWeeks(startDate, i);
+        } else if (oneOnOne === "biweekly") {
+          oneOnOneDate = addWeeks(startDate, i * 2);
+        } else {
+          oneOnOneDate = addMonths(startDate, i);
+        }
+
+        sessions.push({
+          user_id: user.id,
+          type: "one_on_one",
+          scheduled_date: format(oneOnOneDate, "yyyy-MM-dd"),
+        });
+      }
+
+      const performanceCount = performance === "quarterly" ? 4 : 1;
+      for (let i = 1; i <= performanceCount; i++) {
+        const months = performance === "quarterly" ? i * 3 : 12;
+        sessions.push({
+          user_id: user.id,
+          type: "performance",
+          scheduled_date: format(addMonths(startDate, months), "yyyy-MM-dd"),
+        });
+      }
+
+      const { error: insertError } = await supabase
+        .from("review_sessions")
+        .insert(sessions);
+
+      if (insertError) throw insertError;
+
       toast.success("Review cadence updated!");
       queryClient.invalidateQueries({ queryKey: ["review-cadence"] });
+      queryClient.invalidateQueries({ queryKey: ["review-sessions"] });
       setCadenceDialogOpen(false);
-
-      // Generate upcoming sessions
-      await generateReviewSessions(oneOnOne, performance, user.id);
     } catch (error) {
       console.error("Error updating cadence:", error);
       toast.error("Failed to update cadence");
     }
   };
 
-  const generateReviewSessions = async (oneOnOne: string, performance: string, userId: string) => {
-    const now = new Date();
-    const sessions: any[] = [];
-
-    // Generate next 4 1:1 sessions
-    for (let i = 1; i <= 4; i++) {
-      const date =
-        oneOnOne === "weekly"
-          ? addWeeks(now, i)
-          : oneOnOne === "biweekly"
-          ? addWeeks(now, i * 2)
-          : addMonths(now, i);
-
-      sessions.push({
-        type: "one_on_one",
-        scheduled_date: format(date, "yyyy-MM-dd"),
-        user_id: userId,
+  const tasksBySkill = recentTasks.reduce((acc: any, task: any) => {
+    const skills = task.task_skills || [];
+    if (skills.length === 0) {
+      if (!acc["No Skill"]) acc["No Skill"] = [];
+      acc["No Skill"].push(task);
+    } else {
+      skills.forEach((ts: any) => {
+        const skillName = ts.skills?.name || "Unknown";
+        if (!acc[skillName]) acc[skillName] = [];
+        acc[skillName].push(task);
       });
     }
-
-    // Generate next performance review
-    const perfDate = performance === "quarterly" ? addMonths(now, 3) : addMonths(now, 12);
-    sessions.push({
-      type: "performance",
-      scheduled_date: format(perfDate, "yyyy-MM-dd"),
-      user_id: userId,
-    });
-
-    // Clear old sessions and insert new ones
-    await supabase.from("review_sessions").delete().gte("scheduled_date", format(now, "yyyy-MM-dd"));
-    await supabase.from("review_sessions").insert(sessions);
-    queryClient.invalidateQueries({ queryKey: ["review-sessions"] });
-  };
-
-  const groupedTasks = recentTasks.reduce((acc: any, task: any) => {
-    const skills = task.task_skills?.map((ts: any) => ts.skills.name).join(", ") || "No skills";
-    if (!acc[skills]) acc[skills] = [];
-    acc[skills].push(task);
     return acc;
   }, {});
 
@@ -218,112 +230,124 @@ export default function Reviews() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Career Goals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {goals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No goals set yet. Create one to get started!</p>
-            ) : (
-              goals.map((goal: any) => (
-                <div key={goal.id} className="flex items-start justify-between p-3 border rounded">
-                  <div className="flex-1">
-                    <p className="font-medium">{goal.title}</p>
-                    {goal.description && (
-                      <p className="text-sm text-muted-foreground">{goal.description}</p>
-                    )}
-                    {goal.target_date && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Target: {format(new Date(goal.target_date), "MMM dd, yyyy")}
-                      </p>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteGoal(goal.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Career Goals</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {goals.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No goals set yet. Create one to get started!</p>
+                ) : (
+                  goals.map((goal: any) => (
+                    <div key={goal.id} className="flex items-start justify-between p-3 border rounded">
+                      <div className="flex-1">
+                        <p className="font-medium">{goal.title}</p>
+                        {goal.description && (
+                          <p className="text-sm text-muted-foreground">{goal.description}</p>
+                        )}
+                        {goal.target_date && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Target: {format(new Date(goal.target_date), "MMM dd, yyyy")}
+                          </p>
+                        )}
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteGoal(goal.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Reviews</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {sessions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Set your review cadence to schedule sessions
-              </p>
-            ) : (
-              sessions.slice(0, 5).map((session: any) => (
-                <div key={session.id} className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <Badge variant={session.type === "performance" ? "default" : "secondary"}>
-                      {session.type === "one_on_one" ? "1:1" : "Performance Review"}
-                    </Badge>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {format(new Date(session.scheduled_date), "MMM dd, yyyy")}
-                    </p>
-                  </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Upcoming Reviews</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {sessions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No scheduled reviews. Set your review cadence to generate sessions.
+                  </p>
+                ) : (
+                  sessions.slice(0, 5).map((session: any) => (
+                    <div key={session.id} className="p-3 border rounded">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="secondary">{session.type}</Badge>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(session.scheduled_date), "MMM dd, yyyy")}
+                        </p>
+                      </div>
+                      {session.notes && (
+                        <p className="text-sm text-muted-foreground mt-2">{session.notes}</p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Completed Tasks by Skill</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(tasksBySkill).length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No completed tasks in the last 30 days.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(tasksBySkill).map(([skillName, tasks]: any) => (
+                    <div key={skillName}>
+                      <h4 className="font-medium mb-2">{skillName}</h4>
+                      <div className="space-y-2">
+                        {tasks.map((task: any) => (
+                          <div
+                            key={task.id}
+                            className="text-sm p-2 border rounded hover:bg-muted/50 cursor-pointer"
+                          >
+                            {task.title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-1">
+          <CareerChatbot />
+        </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Completed Tasks by Skill</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {Object.keys(groupedTasks).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No completed tasks in the last 30 days</p>
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(groupedTasks).map(([skills, tasks]: [string, any]) => (
-                <div key={skills} className="space-y-2">
-                  <h3 className="font-medium text-sm">{skills}</h3>
-                  <div className="space-y-1 ml-4">
-                    {tasks.map((task: any) => (
-                      <p key={task.id} className="text-sm text-muted-foreground">
-                        • {task.title}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Career Goal</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="goal-title">Goal Title*</Label>
+              <Label>Title</Label>
               <Input
-                id="goal-title"
                 value={newGoalTitle}
                 onChange={(e) => setNewGoalTitle(e.target.value)}
-                placeholder="e.g., Become a Senior Developer"
+                placeholder="e.g., Learn React Advanced Patterns"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="goal-desc">Description</Label>
+              <Label>Description (Optional)</Label>
               <Textarea
-                id="goal-desc"
                 value={newGoalDescription}
                 onChange={(e) => setNewGoalDescription(e.target.value)}
-                placeholder="Describe your goal..."
+                placeholder="Additional details about this goal..."
               />
             </div>
             <div className="space-y-2">
@@ -332,31 +356,23 @@ export default function Reviews() {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className={cn("w-full justify-start", !newGoalDate && "text-muted-foreground")}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !newGoalDate && "text-muted-foreground"
+                    )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {newGoalDate ? format(newGoalDate, "PPP") : <span>Pick a date</span>}
+                    {newGoalDate ? format(newGoalDate, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={newGoalDate}
-                    onSelect={setNewGoalDate}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
+                  <Calendar mode="single" selected={newGoalDate} onSelect={setNewGoalDate} />
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setGoalDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateGoal} disabled={!newGoalTitle.trim() || !newGoalDate}>
-                Create Goal
-              </Button>
-            </div>
+            <Button onClick={handleCreateGoal} className="w-full">
+              Create Goal
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -366,7 +382,7 @@ export default function Reviews() {
           <DialogHeader>
             <DialogTitle>Set Review Cadence</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label>1:1 with Manager</Label>
               <Select

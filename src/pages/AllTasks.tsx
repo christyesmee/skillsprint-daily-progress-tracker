@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +25,7 @@ export default function AllTasks() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("custom");
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -158,6 +159,9 @@ export default function AllTasks() {
     }
 
     toast.success("Task updated successfully!");
+    
+    // Invalidate queries to refresh the list
+    queryClient.invalidateQueries({ queryKey: ["all-tasks", selectedProjects] });
   };
 
   const handleDeleteTask = async (taskId: string) => {
