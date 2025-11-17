@@ -3,11 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Folder, CheckCircle2, Clock, Plus, Calendar } from "lucide-react";
+import { Folder, CheckCircle2, Clock, Plus, Calendar, Target } from "lucide-react";
 import { ProjectDialog } from "@/components/project/ProjectDialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import type { Project } from "@/types/database";
+import { format } from "date-fns";
 
 export default function Home() {
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
@@ -24,6 +25,20 @@ export default function Home() {
 
       if (error) throw error;
       return data as Project[];
+    },
+  });
+
+  const { data: upcomingSessions = [] } = useQuery({
+    queryKey: ["upcoming-review-sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("review_sessions")
+        .select("*")
+        .gte("scheduled_date", format(new Date(), "yyyy-MM-dd"))
+        .order("scheduled_date", { ascending: true })
+        .limit(3);
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -74,7 +89,7 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            Project Dashboard
+            Dashboard
           </h1>
           <p className="text-lg text-muted-foreground">
             Track your work progress and level up your skills
@@ -147,6 +162,30 @@ export default function Home() {
           </CardContent>
         </Card>
       </div>
+
+      {upcomingSessions.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Upcoming Reviews
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={() => navigate("/reviews")}>
+              View All
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {upcomingSessions.map((session: any) => (
+                <div key={session.id} className="flex items-center justify-between p-2 border rounded">
+                  <span className="text-sm">{session.type === "one_on_one" ? "1:1 Meeting" : "Performance Review"}</span>
+                  <span className="text-sm text-muted-foreground">{format(new Date(session.scheduled_date), "MMM dd, yyyy")}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="shadow-glow">
         <CardHeader>

@@ -4,10 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, List, Calendar, ArrowLeft } from "lucide-react";
+import { Pencil, Trash2, List, Calendar, LayoutGrid, CalendarDays, ArrowLeft } from "lucide-react";
 import { ProjectDialog } from "@/components/project/ProjectDialog";
 import { TaskListView } from "@/components/task/TaskListView";
 import { TaskTimelineView } from "@/components/task/TaskTimelineView";
+import { BoardView } from "@/components/task/BoardView";
+import { CalendarView } from "@/components/task/CalendarView";
+import { TaskDetailModal } from "@/components/task/TaskDetailModal";
 import { CategoryManagement } from "@/components/category/CategoryManagement";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -23,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type ViewMode = "list" | "timeline";
+type ViewMode = "list" | "timeline" | "board" | "calendar";
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -31,6 +34,7 @@ export default function ProjectDetail() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
   const queryClient = useQueryClient();
 
   const { data: project } = useQuery({
@@ -53,7 +57,10 @@ export default function ProjectDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("*")
+        .select(`
+          *,
+          projects(name)
+        `)
         .eq("project_id", projectId!)
         .order("due_date", { ascending: true });
 
@@ -216,22 +223,40 @@ export default function ProjectDetail() {
       <div className="flex items-center gap-2 border-b pb-4">
         <Button
           variant={viewMode === "list" ? "default" : "outline"}
+          size="sm"
           onClick={() => setViewMode("list")}
         >
           <List className="h-4 w-4 mr-2" />
-          List View
+          List
         </Button>
         <Button
           variant={viewMode === "timeline" ? "default" : "outline"}
+          size="sm"
           onClick={() => setViewMode("timeline")}
         >
           <Calendar className="h-4 w-4 mr-2" />
-          Timeline View
+          Timeline
+        </Button>
+        <Button
+          variant={viewMode === "board" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("board")}
+        >
+          <LayoutGrid className="h-4 w-4 mr-2" />
+          Board
+        </Button>
+        <Button
+          variant={viewMode === "calendar" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("calendar")}
+        >
+          <CalendarDays className="h-4 w-4 mr-2" />
+          Calendar
         </Button>
       </div>
 
       {/* Tasks View */}
-      {viewMode === "list" ? (
+      {viewMode === "list" && (
         <TaskListView
           tasks={tasks}
           projectId={projectId!}
@@ -239,11 +264,37 @@ export default function ProjectDetail() {
           onUpdateTask={handleUpdateTask}
           onDeleteTask={handleDeleteTask}
         />
-      ) : (
-        <TaskTimelineView tasks={tasks} />
+      )}
+
+      {viewMode === "timeline" && <TaskTimelineView tasks={tasks} />}
+
+      {viewMode === "board" && (
+        <BoardView
+          tasks={tasks}
+          categories={[]}
+          onUpdateTask={handleUpdateTask}
+          onTaskClick={setDetailTask}
+        />
+      )}
+
+      {viewMode === "calendar" && (
+        <CalendarView
+          tasks={tasks}
+          onTaskClick={setDetailTask}
+        />
       )}
 
       {/* Dialogs */}
+      {detailTask && (
+        <TaskDetailModal
+          open={!!detailTask}
+          onOpenChange={(open) => !open && setDetailTask(null)}
+          task={detailTask}
+          projectName={project.name}
+          onUpdate={handleUpdateTask}
+        />
+      )}
+
       {project && (
         <ProjectDialog
           open={editDialogOpen}
