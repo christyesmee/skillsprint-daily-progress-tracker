@@ -1,4 +1,4 @@
-import { Menu } from "lucide-react";
+import { Menu, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
@@ -25,7 +25,7 @@ export function Header() {
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <div className="h-8 w-8 rounded-md bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <span className="text-xs font-bold text-primary-foreground">SS</span>
+            <Zap className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
             <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
