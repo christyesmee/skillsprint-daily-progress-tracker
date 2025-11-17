@@ -1,18 +1,9 @@
-import { useState } from "react";
-import { format } from "date-fns";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { TaskDialog } from "./TaskDialog";
-import { CategoryBadge } from "@/components/category/CategoryBadge";
+import { SortableTaskList } from "./SortableTaskList";
 import type { Task, TaskStatus } from "@/types/database";
 import {
   Select,
@@ -23,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -42,6 +34,7 @@ export function TaskListView({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");
+  const [sortBy, setSortBy] = useState<string>("custom");
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -55,9 +48,38 @@ export function TaskListView({
     },
   });
 
-  const filteredTasks = tasks.filter(
-    (task) => filterStatus === "all" || task.status === filterStatus
-  );
+  const filteredAndSortedTasks = useMemo(() => {
+    let result = tasks.filter(
+      (task) => filterStatus === "all" || task.status === filterStatus
+    );
+
+    // Apply sorting
+    if (sortBy === "status") {
+      result.sort((a, b) => a.status.localeCompare(b.status));
+    } else if (sortBy === "priority") {
+      const priorityOrder = { high: 0, medium: 1, low: 2 };
+      result.sort((a, b) => {
+        const aPriority = a.priority ? priorityOrder[a.priority] : 3;
+        const bPriority = b.priority ? priorityOrder[b.priority] : 3;
+        return aPriority - bPriority;
+      });
+    } else if (sortBy === "category") {
+      result.sort((a, b) => {
+        const aCategory = categories.find((c: any) => c.id === a.category_id);
+        const bCategory = categories.find((c: any) => c.id === b.category_id);
+        const aName = aCategory?.name || "";
+        const bName = bCategory?.name || "";
+        return aName.localeCompare(bName);
+      });
+    } else if (sortBy === "due_date") {
+      result.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+    } else {
+      // Custom order - sort by order_index
+      result.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    }
+
+    return result;
+  }, [tasks, filterStatus, sortBy, categories]);
 
   const getStatusBadge = (status: TaskStatus) => {
     const styles = {
@@ -95,6 +117,26 @@ export function TaskListView({
     );
   };
 
+  const handleReorder = async (reorderedTasks: Task[]) => {
+    // Update order_index for all tasks
+    const updates = reorderedTasks.map((task, index) => ({
+      id: task.id,
+      order_index: index,
+    }));
+
+    try {
+      for (const update of updates) {
+        await supabase
+          .from("tasks")
+          .update({ order_index: update.order_index })
+          .eq("id", update.id);
+      }
+      toast.success("Task order updated");
+    } catch (error) {
+      toast.error("Failed to update task order");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -122,73 +164,17 @@ export function TaskListView({
         </Button>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[35%]">Task</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Due Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTasks.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No tasks found. Create your first task to get started!
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredTasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{task.title}</p>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {task.description}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {task.category_id && categories.find((c: any) => c.id === task.category_id) && (
-                      <CategoryBadge
-                        name={categories.find((c: any) => c.id === task.category_id)!.name}
-                        color={categories.find((c: any) => c.id === task.category_id)!.color}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(task.status)}</TableCell>
-                  <TableCell>{getPriorityBadge(task.priority)}</TableCell>
-                  <TableCell>{format(new Date(task.due_date), "MMM dd, yyyy")}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingTask(task)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDeleteTask(task.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <SortableTaskList
+        tasks={filteredAndSortedTasks}
+        categories={categories}
+        onEdit={setEditingTask}
+        onDelete={onDeleteTask}
+        onReorder={handleReorder}
+        getStatusBadge={getStatusBadge}
+        getPriorityBadge={getPriorityBadge}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+      />
 
       {editingTask && (
         <TaskDialog
