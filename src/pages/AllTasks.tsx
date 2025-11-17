@@ -189,6 +189,7 @@ export default function AllTasks() {
           .eq("id", update.id);
       }
       toast.success("Task order updated");
+      queryClient.invalidateQueries({ queryKey: ["all-tasks", selectedProjects] });
     } catch (error) {
       toast.error("Failed to update task order");
     }

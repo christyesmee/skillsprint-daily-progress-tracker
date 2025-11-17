@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -241,13 +241,21 @@ export function SortableTaskList({
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Maintain a local list for instant visual reordering
+  const [items, setItems] = useState(tasks);
+  useEffect(() => {
+    setItems(tasks);
+  }, [tasks, sortBy]);
+
+const handleDragEnd = (event: DragEndEvent) => {
+    if (sortBy !== "custom") return; // Only allow DnD when using custom order
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = tasks.findIndex((task) => task.id === active.id);
-      const newIndex = tasks.findIndex((task) => task.id === over.id);
-      const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
+      const oldIndex = items.findIndex((task) => task.id === active.id);
+      const newIndex = items.findIndex((task) => task.id === over.id);
+      const reorderedTasks = arrayMove(items, oldIndex, newIndex);
+      setItems(reorderedTasks);
       onReorder(reorderedTasks);
     }
   };
@@ -290,15 +298,15 @@ export function SortableTaskList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tasks.length === 0 ? (
+              {items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     No tasks found. Create your first task to get started!
                   </TableCell>
                 </TableRow>
               ) : (
-                <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                  {tasks.map((task) => (
+                <SortableContext items={items.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  {items.map((task) => (
                     <SortableTaskRow
                       key={task.id}
                       task={task}
