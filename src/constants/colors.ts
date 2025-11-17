@@ -1,0 +1,23 @@
+// Predefined color palette for task categories (20 colors)
+export const CATEGORY_COLORS = [
+  { name: "Purple", value: "#9333EA" },
+  { name: "Blue", value: "#3B82F6" },
+  { name: "Cyan", value: "#06B6D4" },
+  { name: "Teal", value: "#14B8A6" },
+  { name: "Green", value: "#10B981" },
+  { name: "Lime", value: "#84CC16" },
+  { name: "Yellow", value: "#EAB308" },
+  { name: "Orange", value: "#F97316" },
+  { name: "Red", value: "#EF4444" },
+  { name: "Pink", value: "#EC4899" },
+  { name: "Rose", value: "#F43F5E" },
+  { name: "Indigo", value: "#6366F1" },
+  { name: "Violet", value: "#8B5CF6" },
+  { name: "Fuchsia", value: "#D946EF" },
+  { name: "Sky", value: "#0EA5E9" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Amber", value: "#F59E0B" },
+  { name: "Slate", value: "#64748B" },
+  { name: "Zinc", value: "#71717A" },
+  { name: "Stone", value: "#78716C" },
+];
