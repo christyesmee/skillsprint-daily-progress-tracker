@@ -82,12 +82,25 @@ export function AppSidebar({ onCreateProject }: AppSidebarProps) {
         <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
           <div className="flex items-center justify-between">
             {!collapsed && (
-              <div>
+              <NavLink 
+                to="/" 
+                className="hover:opacity-80 transition-opacity cursor-pointer"
+              >
                 <h2 className="text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                   SkillSprint
                 </h2>
                 <p className="text-xs text-muted-foreground">Track your progress</p>
-              </div>
+              </NavLink>
+            )}
+            {collapsed && (
+              <NavLink 
+                to="/" 
+                className="hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                <div className="h-8 w-8 rounded-md bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                  <span className="text-xs font-bold text-primary-foreground">SS</span>
+                </div>
+              </NavLink>
             )}
             {/* Collapse button inside sidebar when expanded */}
             <SidebarTrigger 
