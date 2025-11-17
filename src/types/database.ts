@@ -27,6 +27,7 @@ export interface Task {
   due_date: string;
   priority: TaskPriority | null;
   category_id?: string | null;
+  order_index?: number;
   user_id: string;
   created_at: string;
   updated_at: string;

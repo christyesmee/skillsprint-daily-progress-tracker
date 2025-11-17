@@ -1,25 +1,22 @@
-import { Folder, Plus, LogOut } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Plus, LogOut, ListTodo, LayoutDashboard } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { Project } from "@/types/database";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import type { Project } from "@/types/database";
 
 interface AppSidebarProps {
   onCreateProject: () => void;
@@ -28,9 +25,8 @@ interface AppSidebarProps {
 export function AppSidebar({ onCreateProject }: AppSidebarProps) {
   const sidebar = useSidebar();
   const collapsed = sidebar.state === "collapsed";
-  const location = useLocation();
 
-  const { data: projects = [], refetch } = useQuery({
+  const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,36 +60,63 @@ export function AppSidebar({ onCreateProject }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-72"}>
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
-        {!collapsed && (
-          <div>
-            <h1 className="text-xl font-bold text-sidebar-primary">SkillSprint</h1>
-            <p className="text-xs text-sidebar-foreground/70 mt-1">
-              Track your work. Level up your skills.
-            </p>
-          </div>
-        )}
-      </SidebarHeader>
-
+    <Sidebar className={collapsed ? "w-14" : "w-60"}>
       <SidebarContent>
         <SidebarGroup>
-          <div className="px-3 py-2">
+          {!collapsed && (
+            <SidebarGroupLabel>Actions</SidebarGroupLabel>
+          )}
+          <SidebarGroupContent>
             <Button
               onClick={onCreateProject}
-              className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
+              className="w-full justify-start gap-2"
+              variant="outline"
             >
               <Plus className="h-4 w-4" />
-              <span className="ml-2">New Project</span>
+              {!collapsed && "New Project"}
             </Button>
-          </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Navigation */}
+        <SidebarGroup>
+          {!collapsed && (
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          )}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/"
+                    end
+                    className="hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    {!collapsed && <span>Project Dashboard</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/all-tasks"
+                    className="hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <ListTodo className="h-4 w-4" />
+                    {!collapsed && <span>All Tasks</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
           {!collapsed && (
-            <SidebarGroupLabel className="text-sidebar-foreground/70">
-              Projects
-            </SidebarGroupLabel>
+            <SidebarGroupLabel>Projects</SidebarGroupLabel>
           )}
           <SidebarGroupContent>
             <SidebarMenu>
@@ -102,21 +125,15 @@ export function AppSidebar({ onCreateProject }: AppSidebarProps) {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={`/project/${project.id}`}
-                      className="hover:bg-sidebar-accent/50 text-sidebar-foreground"
+                      className="hover:bg-sidebar-accent"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
-                      <div className="flex items-center gap-2 w-full min-w-0">
-                        <div
-                          className={`h-2 w-2 rounded-full flex-shrink-0 ${getStatusColor(
-                            project.status
-                          )}`}
-                        />
-                        {!collapsed && (
-                          <div className="flex-1 min-w-0">
-                            <p className="truncate text-sm">{project.name}</p>
-                          </div>
-                        )}
-                      </div>
+                      <div
+                        className={`h-2 w-2 rounded-full ${getStatusColor(
+                          project.status
+                        )}`}
+                      />
+                      {!collapsed && <span>{project.name}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -126,14 +143,14 @@ export function AppSidebar({ onCreateProject }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border p-4">
         <Button
-          onClick={handleSignOut}
           variant="ghost"
-          className="w-full text-sidebar-foreground hover:bg-sidebar-accent"
+          onClick={handleSignOut}
+          className="w-full justify-start gap-2"
         >
           <LogOut className="h-4 w-4" />
-          <span className="ml-2">Sign Out</span>
+          {!collapsed && "Sign Out"}
         </Button>
       </SidebarFooter>
     </Sidebar>
