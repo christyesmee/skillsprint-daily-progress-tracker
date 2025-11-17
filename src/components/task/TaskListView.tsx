@@ -169,6 +169,8 @@ export function TaskListView({
         categories={categories}
         onEdit={setEditingTask}
         onDelete={onDeleteTask}
+        onUpdate={onUpdateTask}
+        onTaskClick={setEditingTask}
         onReorder={handleReorder}
         getStatusBadge={getStatusBadge}
         getPriorityBadge={getPriorityBadge}

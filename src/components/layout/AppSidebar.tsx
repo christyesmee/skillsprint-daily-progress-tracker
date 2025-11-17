@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, LogOut, ListTodo, LayoutDashboard } from "lucide-react";
+import { Plus, LogOut, ListTodo, LayoutDashboard, Target } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -94,7 +94,7 @@ export function AppSidebar({ onCreateProject }: AppSidebarProps) {
                     activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                   >
                     <LayoutDashboard className="h-4 w-4" />
-                    {!collapsed && <span>Project Dashboard</span>}
+                    {!collapsed && <span>Dashboard</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -107,6 +107,18 @@ export function AppSidebar({ onCreateProject }: AppSidebarProps) {
                   >
                     <ListTodo className="h-4 w-4" />
                     {!collapsed && <span>All Tasks</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/reviews"
+                    className="hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <Target className="h-4 w-4" />
+                    {!collapsed && <span>Reviews</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

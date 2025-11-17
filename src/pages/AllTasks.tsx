@@ -246,6 +246,8 @@ export default function AllTasks() {
             categories={categories}
             onEdit={setEditingTask}
             onDelete={handleDeleteTask}
+            onUpdate={handleUpdateTask}
+            onTaskClick={setEditingTask}
             onReorder={handleReorder}
             getStatusBadge={getStatusBadge}
             getPriorityBadge={getPriorityBadge}

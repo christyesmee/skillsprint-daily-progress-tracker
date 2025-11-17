@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      career_goals: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          target_date: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          target_date?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          target_date?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string
@@ -40,6 +70,36 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      goal_skills: {
+        Row: {
+          goal_id: string
+          skill_id: string
+        }
+        Insert: {
+          goal_id: string
+          skill_id: string
+        }
+        Update: {
+          goal_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_skills_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
@@ -76,6 +136,158 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      review_cadence: {
+        Row: {
+          created_at: string
+          one_on_one: string
+          performance: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          one_on_one?: string
+          performance?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          one_on_one?: string
+          performance?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      review_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          scheduled_date: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_date: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          scheduled_date?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      skills: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      task_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_skills: {
+        Row: {
+          skill_id: string
+          task_id: string
+        }
+        Insert: {
+          skill_id: string
+          task_id: string
+        }
+        Update: {
+          skill_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_skills_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
